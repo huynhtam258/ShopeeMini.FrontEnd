@@ -18,6 +18,12 @@ export const orderService = {
     return res.data.data;
   },
 
+  // DEMO ONLY: same checkout but the backend endpoint has no IdempotencyFilter.
+  async checkoutNoIdempotency() {
+    const res = await apiClient.post<ApiResponse<OrderDto>>("/orders/checkout-no-idempotency", {});
+    return res.data.data;
+  },
+
   async list(query: OrderQuery) {
     const res = await apiClient.get<ApiResponse<PagedResult<OrderListItemDto>>>("/orders", {
       params: query,

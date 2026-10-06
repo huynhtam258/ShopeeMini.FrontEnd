@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -85,7 +86,9 @@ export function Header() {
                 )}
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80">
-                <DropdownMenuLabel>Thông báo</DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Thông báo</DropdownMenuLabel>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <div className="max-h-80 space-y-2 overflow-y-auto p-1">
                   {!recentNotifications || recentNotifications.items.length === 0 ? (
@@ -137,7 +140,9 @@ export function Header() {
                 <span className="hidden max-w-32 truncate sm:inline">{user.fullName}</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="truncate">{user.email}</DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="truncate">{user.email}</DropdownMenuLabel>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => router.push("/profile")}>
                   <UserIcon /> Hồ sơ của tôi

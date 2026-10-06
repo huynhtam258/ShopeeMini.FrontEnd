@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { PriceDisplay } from "@/components/common/price-display";
 import { useCart } from "@/hooks/use-cart";
-import { useCheckout } from "@/hooks/use-orders";
+import { CheckoutAttemptLog, useCheckout } from "@/hooks/use-orders";
 import { generateIdempotencyKey } from "@/lib/idempotency";
 import { formatCurrency } from "@/lib/format";
 import { useAuthStore } from "@/store/auth.store";
@@ -20,6 +22,8 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { data: cart, isLoading, refetch } = useCart();
   const checkout = useCheckout();
+  const [simulateLostResponse, setSimulateLostResponse] = useState(true);
+  const [demoRun, setDemoRun] = useState<{ title: string; logs: CheckoutAttemptLog[] } | null>(null);
 
   const idempotencyKeyRef = useRef<string | null>(null);
   if (idempotencyKeyRef.current === null) {
@@ -62,9 +66,22 @@ export default function CheckoutPage() {
 
   const hasBlockingIssue = cart.items.some((i) => i.availableStock <= 0 || i.availableStock < i.quantity);
 
+  function runCheckout(idempotencyKey: string | null, title: string) {
+    setDemoRun({ title, logs: [] });
+    checkout.mutate({
+      idempotencyKey,
+      simulateLostResponse,
+      onAttempt: (log) => setDemoRun((prev) => prev && { ...prev, logs: [...prev.logs, log] }),
+    });
+  }
+
   function handleConfirm() {
     if (!idempotencyKeyRef.current) return;
-    checkout.mutate(idempotencyKeyRef.current);
+    runCheckout(idempotencyKeyRef.current, `Có Idempotency-Key: ${idempotencyKeyRef.current}`);
+  }
+
+  function handleConfirmNoIdempotency() {
+    runCheckout(null, "Không có Idempotency-Key (POST /orders/checkout-no-idempotency)");
   }
 
   return (
@@ -121,6 +138,45 @@ export default function CheckoutPage() {
         {checkout.isPending && <Loader2 className="size-4 animate-spin" />}
         {checkout.isPending ? "Đang xử lý đơn hàng..." : "Xác nhận đặt hàng"}
       </Button>
+
+      <Button
+        size="lg"
+        variant="outline"
+        className="w-full"
+        disabled={hasBlockingIssue || checkout.isPending}
+        onClick={handleConfirmNoIdempotency}
+      >
+        Checkout no idempotency
+      </Button>
+
+      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Checkbox
+          checked={simulateLostResponse}
+          onCheckedChange={(checked) => setSimulateLostResponse(checked === true)}
+        />
+        Demo: giả lập mất response của request đầu tiên và tự động retry 1 lần
+      </label>
+
+      {demoRun && (
+        <Card>
+          <CardContent className="space-y-2 text-sm">
+            <p className="font-medium">{demoRun.title}</p>
+            {demoRun.logs.map((log) => (
+              <p key={log.attempt} className={log.ok ? "text-green-600" : "text-destructive"}>
+                Request #{log.attempt}: {log.message}
+              </p>
+            ))}
+            {checkout.isError && demoRun.logs.some((l) => l.ok) && (
+              <p className="text-muted-foreground">
+                Client báo thất bại, nhưng request trước đó đã tạo đơn và trừ kho.{" "}
+                <Link href="/orders" className="underline">
+                  Kiểm tra lịch sử đơn hàng
+                </Link>
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
